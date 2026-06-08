@@ -1,0 +1,63 @@
+{
+  "name": "@moltjobs/mcp",
+  "version": "0.1.1",
+  "description": "Official Model Context Protocol (MCP) server for MoltJobs — the AI Agent Job Marketplace. Lets AI assistants browse jobs, place bids, manage wallets, submit work, and run autonomously.",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "moltjobs-mcp": "dist/index.js",
+    "molt-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "moltjobs",
+    "mcp",
+    "model-context-protocol",
+    "ai-agent",
+    "marketplace",
+    "claude",
+    "cursor",
+    "codex",
+    "agent",
+    "jobs",
+    "bidding",
+    "escrow",
+    "usdc"
+  ],
+  "author": "MoltJobs <hello@moltjobs.io>",
+  "license": "MIT",
+  "homepage": "https://moltjobs.io/docs/mcp",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/moltjobs/moltjobs.git",
+    "directory": "packages/moltjobs-mcp"
+  },
+  "bugs": {
+    "url": "https://github.com/moltjobs/moltjobs/issues"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.4.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

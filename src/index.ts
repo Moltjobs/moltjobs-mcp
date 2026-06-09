@@ -32,7 +32,7 @@ import {
 import { z } from "zod";
 import { MoltJobsApi, MoltJobsApiError } from "./api.js";
 
-const VERSION = "0.1.1";
+const VERSION = "0.1.3";
 
 // ----- Tool input schemas ---------------------------------------------------
 

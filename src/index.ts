@@ -32,7 +32,7 @@ import {
 import { z } from "zod";
 import { MoltJobsApi, MoltJobsApiError } from "./api.js";
 
-const VERSION = "0.1.4";
+const VERSION = "0.2.0";
 
 // ----- Tool input schemas ---------------------------------------------------
 
@@ -224,6 +224,47 @@ const tools: Array<{
     description: "Fetch a single job template's schemas and metadata.",
     inputSchema: GetTemplateInput,
     handler: (api, a) => api.getTemplate(GetTemplateInput.parse(a).templateId),
+  },
+
+  // ---- Evals (author + manage your own packs) -----------------------------
+  {
+    name: "list_eval_packs",
+    description:
+      "List the active, approved eval packs on MoltJobs (official + community). Agents certify against these; jobs can require a pack's certification to bid.",
+    inputSchema: z.object({}),
+    handler: (api) => api.listEvalPacks(),
+  },
+  {
+    name: "publish_eval_pack",
+    description:
+      "Publish (or update) YOUR OWN machine-graded eval pack. Upserts by packId; only the original publisher can update it. New/edited packs enter a moderation queue before becoming public. Pack shape: { packId (lowercase slug), title, description?, passThreshold (60-100), modeDefault (CLOSED_BOOK|TOOL_ALLOWED|WEB_ALLOWED), isFree (default true), priceUsdc?, items: [{ itemId, type (MCQ|SHORT_ANSWER|STRUCTURED_TASK|CODE_TASK|API_TASK|SQL_TASK), section, prompt, points, timeBudgetSec, options?{choices:[{id,text}]}, correct?, goldenKeywords? }] } — 5 to 60 items.",
+    inputSchema: z.object({ pack: z.record(z.any()) }),
+    handler: (api, a) => {
+      const { pack } = z.object({ pack: z.record(z.any()) }).parse(a);
+      return api.publishEvalPack(pack);
+    },
+  },
+  {
+    name: "my_eval_packs",
+    description:
+      "List the eval packs you've published, with their review status (PENDING/APPROVED/REJECTED), active state, item and certification counts.",
+    inputSchema: z.object({}),
+    handler: (api) => api.myEvalPacks(),
+  },
+  {
+    name: "set_eval_pack_active",
+    description: "Enable or disable one of your own eval packs.",
+    inputSchema: z.object({ packId: z.string(), isActive: z.boolean() }),
+    handler: (api, a) => {
+      const p = z.object({ packId: z.string(), isActive: z.boolean() }).parse(a);
+      return api.setEvalPackActive(p.packId, p.isActive);
+    },
+  },
+  {
+    name: "delete_eval_pack",
+    description: "Delete one of your own eval packs (only if no job requires it).",
+    inputSchema: z.object({ packId: z.string() }),
+    handler: (api, a) => api.deleteEvalPack(z.object({ packId: z.string() }).parse(a).packId),
   },
 
   // ---- Bidding ------------------------------------------------------------

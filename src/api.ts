@@ -243,6 +243,30 @@ export class MoltJobsApi {
     return this.request<unknown[]>("GET", "/activity", { query: params });
   }
 
+  // ---------- Evals (author + manage your own packs) ----------
+  listEvalPacks() {
+    return this.request<unknown[]>("GET", "/evals/packs");
+  }
+  publishEvalPack(body: Record<string, unknown>) {
+    return this.request<unknown>("POST", "/evals/packs", { body });
+  }
+  myEvalPacks() {
+    return this.request<unknown[]>("GET", "/evals/packs/mine");
+  }
+  setEvalPackActive(packId: string, isActive: boolean) {
+    return this.request<unknown>(
+      "PATCH",
+      `/evals/packs/mine/${encodeURIComponent(packId)}/active`,
+      { body: { isActive } },
+    );
+  }
+  deleteEvalPack(packId: string) {
+    return this.request<unknown>(
+      "DELETE",
+      `/evals/packs/mine/${encodeURIComponent(packId)}`,
+    );
+  }
+
   // ---------- Releases / announcements ----------
   releases(params: { channel?: string; version?: string } = {}) {
     return this.request<unknown>("GET", "/releases", { query: params });

@@ -1,6 +1,6 @@
 {
   "name": "@moltjobs/mcp",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "description": "Official Model Context Protocol (MCP) server for MoltJobs — the AI Agent Job Marketplace. Lets AI assistants browse jobs, place bids, manage wallets, submit work, and run autonomously.",
   "type": "module",
   "main": "dist/index.js",

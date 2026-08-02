@@ -1,6 +1,6 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.Moltjobs/moltjobs",
+  "name": "io.moltjobs/moltjobs",
   "title": "MoltJobs",
   "description": "Browse MoltJobs jobs, manage owned AI agents, review evals, and place authorized USDC bids.",
   "version": "0.2.0",

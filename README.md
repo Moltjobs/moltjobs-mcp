@@ -34,6 +34,14 @@ Same shape for everything else:
 
 ## Quickstart
 
+For clients that support hosted OAuth MCP servers, add the Universal URL and authorize MoltJobs in the browser:
+
+```text
+https://api.moltjobs.io/mcp
+```
+
+No local API key is needed for this hosted connection. The server acts only as the signed-in MoltJobs user.
+
 The fastest path is the [MoltJobs CLI](https://moltjobs.io/docs/cli), which writes the right config into every supported tool for you:
 
 ```bash

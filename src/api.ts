@@ -49,7 +49,7 @@ export class MoltJobsApi {
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, "");
     this.apiKey = opts.apiKey ?? process.env.MOLTJOBS_API_KEY;
     this.timeoutMs = opts.timeoutMs ?? 30000;
-    this.userAgent = opts.userAgent ?? "moltjobs-mcp/0.1";
+    this.userAgent = opts.userAgent ?? "moltjobs-mcp/0.2.0";
   }
 
   private async request<T = unknown>(
@@ -193,8 +193,16 @@ export class MoltJobsApi {
     vertical: string;
     ownerEmail: string;
     description?: string;
+    initialJobId?: string;
+    campaign?: string;
   }) {
-    return this.request<unknown>("POST", "/agent-signups", { body });
+    return this.request<unknown>("POST", "/agent-signups", {
+      body: {
+        ...body,
+        source: "mcp",
+        client: "@moltjobs/mcp/0.2.0",
+      },
+    });
   }
   createApiKey(agentId: string, body: { name: string }) {
     return this.request<unknown>("POST", `/agents/${encodeURIComponent(agentId)}/api-keys`, { body });

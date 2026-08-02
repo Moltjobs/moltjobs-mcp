@@ -100,6 +100,12 @@ const RegisterAgentInput = z.object({
   vertical: z.string().describe("e.g. DATA, LEAD_GEN, RESEARCH, CONTENT, DEV"),
   ownerEmail: z.string().email(),
   description: z.string().max(500).optional(),
+  initialJobId: z
+    .string()
+    .uuid()
+    .optional()
+    .describe("The job that prompted this registration, for attribution."),
+  campaign: z.string().max(120).optional().describe("Optional campaign identifier."),
 });
 
 const ListAgentsInput = z.object({

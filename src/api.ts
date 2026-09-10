@@ -37,7 +37,8 @@ export class MoltJobsApiError extends Error {
   }
 }
 
-const DEFAULT_BASE = process.env.MOLTJOBS_API_URL || "https://api.moltjobs.io/v1";
+const DEFAULT_BASE =
+  process.env.MOLTJOBS_API_URL || "https://api.moltjobs.io/v1";
 
 export class MoltJobsApi {
   readonly baseUrl: string;
@@ -49,13 +50,17 @@ export class MoltJobsApi {
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, "");
     this.apiKey = opts.apiKey ?? process.env.MOLTJOBS_API_KEY;
     this.timeoutMs = opts.timeoutMs ?? 30000;
-    this.userAgent = opts.userAgent ?? "moltjobs-mcp/0.2.0";
+    this.userAgent = opts.userAgent ?? "moltjobs-mcp/0.4.0";
   }
 
   private async request<T = unknown>(
     method: string,
     path: string,
-    init: { query?: Record<string, unknown>; body?: unknown; bearer?: string } = {},
+    init: {
+      query?: Record<string, unknown>;
+      body?: unknown;
+      bearer?: string;
+    } = {},
   ): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
     if (init.query) {
@@ -85,8 +90,12 @@ export class MoltJobsApi {
 
       const requestId = res.headers.get("x-request-id") ?? undefined;
       const contentType = res.headers.get("content-type") ?? "";
-      const isJson = contentType.includes("application/json") || contentType.includes("+json");
-      const payload = isJson ? await res.json().catch(() => undefined) : await res.text().catch(() => undefined);
+      const isJson =
+        contentType.includes("application/json") ||
+        contentType.includes("+json");
+      const payload = isJson
+        ? await res.json().catch(() => undefined)
+        : await res.text().catch(() => undefined);
 
       if (!res.ok) {
         // RFC 7807 problem+json
@@ -95,18 +104,26 @@ export class MoltJobsApi {
           status: res.status,
           title: (p.title as string) || res.statusText || "Request failed",
           type: p.type as string | undefined,
-          detail: (p.detail as string) || (typeof payload === "string" ? payload : undefined),
+          detail:
+            (p.detail as string) ||
+            (typeof payload === "string" ? payload : undefined),
           requestId: (p.requestId as string) || requestId,
           body: payload,
         });
       }
 
       // Unwrap { data, meta } envelope if present
-      if (payload && typeof payload === "object" && "data" in (payload as Record<string, unknown>)) {
+      if (
+        payload &&
+        typeof payload === "object" &&
+        "data" in (payload as Record<string, unknown>)
+      ) {
         const data = (payload as { data: T; meta?: unknown }).data;
         // Stash meta on the array for paginated endpoints
         if (Array.isArray(data)) {
-          (data as { meta?: unknown }).meta = (payload as { meta?: unknown }).meta;
+          (data as { meta?: unknown }).meta = (
+            payload as { meta?: unknown }
+          ).meta;
         }
         return data;
       }
@@ -117,13 +134,15 @@ export class MoltJobsApi {
   }
 
   // ---------- Jobs ----------
-  listJobs(params: {
-    status?: string;
-    vertical?: string;
-    limit?: number;
-    cursor?: string;
-    q?: string;
-  } = {}) {
+  listJobs(
+    params: {
+      status?: string;
+      vertical?: string;
+      limit?: number;
+      cursor?: string;
+      q?: string;
+    } = {},
+  ) {
     return this.request<unknown[]>("GET", "/jobs", { query: params });
   }
   getJob(id: string) {
@@ -133,49 +152,102 @@ export class MoltJobsApi {
     return this.request<unknown>("POST", "/jobs", { body });
   }
   startJob(id: string) {
-    return this.request<unknown>("PATCH", `/jobs/${encodeURIComponent(id)}/start`);
+    return this.request<unknown>(
+      "PATCH",
+      `/jobs/${encodeURIComponent(id)}/start`,
+    );
   }
   submitWork(id: string, body: { outputData: unknown; proofHash?: string }) {
-    return this.request<unknown>("PATCH", `/jobs/${encodeURIComponent(id)}/submit`, { body });
+    return this.request<unknown>(
+      "PATCH",
+      `/jobs/${encodeURIComponent(id)}/submit`,
+      { body },
+    );
   }
   approveWork(id: string) {
-    return this.request<unknown>("PATCH", `/jobs/${encodeURIComponent(id)}/approve`);
+    return this.request<unknown>(
+      "PATCH",
+      `/jobs/${encodeURIComponent(id)}/approve`,
+    );
   }
   rejectWork(id: string, body: { reason: string }) {
-    return this.request<unknown>("PATCH", `/jobs/${encodeURIComponent(id)}/reject`, { body });
+    return this.request<unknown>(
+      "PATCH",
+      `/jobs/${encodeURIComponent(id)}/reject`,
+      { body },
+    );
   }
   cancelJob(id: string) {
-    return this.request<unknown>("PATCH", `/jobs/${encodeURIComponent(id)}/cancel`);
+    return this.request<unknown>(
+      "PATCH",
+      `/jobs/${encodeURIComponent(id)}/cancel`,
+    );
   }
   releaseEscrow(id: string) {
-    return this.request<unknown>("POST", `/jobs/${encodeURIComponent(id)}/release-escrow`);
+    return this.request<unknown>(
+      "POST",
+      `/jobs/${encodeURIComponent(id)}/release-escrow`,
+    );
   }
   jobEvents(id: string) {
-    return this.request<unknown[]>("GET", `/jobs/${encodeURIComponent(id)}/events`);
+    return this.request<unknown[]>(
+      "GET",
+      `/jobs/${encodeURIComponent(id)}/events`,
+    );
   }
 
   // ---------- Bids ----------
-  placeBid(jobId: string, body: { agentId?: string; amount: number; coverLetter?: string }) {
-    return this.request<unknown>("POST", `/jobs/${encodeURIComponent(jobId)}/bids`, { body });
+  placeBid(
+    jobId: string,
+    body: { agentId?: string; amount: number; coverLetter?: string },
+  ) {
+    return this.request<unknown>(
+      "POST",
+      `/jobs/${encodeURIComponent(jobId)}/bids`,
+      { body },
+    );
   }
   listBidsForJob(jobId: string) {
-    return this.request<unknown[]>("GET", `/jobs/${encodeURIComponent(jobId)}/bids`);
+    return this.request<unknown[]>(
+      "GET",
+      `/jobs/${encodeURIComponent(jobId)}/bids`,
+    );
   }
   withdrawBid(jobId: string, bidId: string) {
-    return this.request<unknown>("DELETE", `/jobs/${encodeURIComponent(jobId)}/bids/${encodeURIComponent(bidId)}`);
+    return this.request<unknown>(
+      "DELETE",
+      `/jobs/${encodeURIComponent(jobId)}/bids/${encodeURIComponent(bidId)}`,
+    );
   }
   acceptBid(jobId: string, bidId: string) {
-    return this.request<unknown>("POST", `/jobs/${encodeURIComponent(jobId)}/bids/${encodeURIComponent(bidId)}/accept`);
+    return this.request<unknown>(
+      "POST",
+      `/jobs/${encodeURIComponent(jobId)}/bids/${encodeURIComponent(bidId)}/accept`,
+    );
   }
   getBidAllowance(agentId: string) {
-    return this.request<unknown>("GET", `/bids/allowance/${encodeURIComponent(agentId)}`);
+    return this.request<unknown>(
+      "GET",
+      `/bids/allowance/${encodeURIComponent(agentId)}`,
+    );
   }
-  buyExtraBids(body: { agentId: string; quantity?: number; usdcAmount?: number }) {
+  buyExtraBids(body: {
+    agentId: string;
+    quantity?: number;
+    usdcAmount?: number;
+  }) {
     return this.request<unknown>("POST", `/bids/buy-extra`, { body });
   }
 
   // ---------- Agents ----------
-  listAgents(params: { vertical?: string; sort?: string; limit?: number; cursor?: string } = {}) {
+  listAgents(
+    params: {
+      vertical?: string;
+      sort?: string;
+      limit?: number;
+      cursor?: string;
+    } = {},
+  ) {
     return this.request<unknown[]>("GET", "/agents", { query: params });
   }
   getAgent(id: string) {
@@ -184,8 +256,19 @@ export class MoltJobsApi {
   me() {
     return this.request<unknown>("GET", "/agents/me");
   }
-  heartbeat(agentId: string, body: { jobId?: string; statusReport?: string; runtimeMetadata?: unknown } = {}) {
-    return this.request<unknown>("POST", `/agents/${encodeURIComponent(agentId)}/heartbeat`, { body });
+  heartbeat(
+    agentId: string,
+    body: {
+      jobId?: string;
+      statusReport?: string;
+      runtimeMetadata?: unknown;
+    } = {},
+  ) {
+    return this.request<unknown>(
+      "POST",
+      `/agents/${encodeURIComponent(agentId)}/heartbeat`,
+      { body },
+    );
   }
   registerAgent(body: {
     agentHandle: string;
@@ -205,34 +288,61 @@ export class MoltJobsApi {
     });
   }
   createApiKey(agentId: string, body: { name: string }) {
-    return this.request<unknown>("POST", `/agents/${encodeURIComponent(agentId)}/api-keys`, { body });
+    return this.request<unknown>(
+      "POST",
+      `/agents/${encodeURIComponent(agentId)}/api-keys`,
+      { body },
+    );
   }
   listApiKeys(agentId: string) {
-    return this.request<unknown[]>("GET", `/agents/${encodeURIComponent(agentId)}/api-keys`);
+    return this.request<unknown[]>(
+      "GET",
+      `/agents/${encodeURIComponent(agentId)}/api-keys`,
+    );
   }
   agentJobs(agentId: string, params: { status?: string; limit?: number } = {}) {
     const qs = new URLSearchParams();
     if (params.status) qs.set("status", params.status);
     if (params.limit) qs.set("limit", String(params.limit));
     const suffix = qs.toString() ? `?${qs.toString()}` : "";
-    return this.request<unknown>("GET", `/agents/${encodeURIComponent(agentId)}/jobs${suffix}`);
+    return this.request<unknown>(
+      "GET",
+      `/agents/${encodeURIComponent(agentId)}/jobs${suffix}`,
+    );
   }
   registerWebhook(agentId: string, url: string) {
-    return this.request<unknown>("POST", `/agents/${encodeURIComponent(agentId)}/webhook`, { body: { url } });
+    return this.request<unknown>(
+      "POST",
+      `/agents/${encodeURIComponent(agentId)}/webhook`,
+      { body: { url } },
+    );
   }
 
   // ---------- Wallet (financial ops) ----------
   getWallet(agentId: string) {
-    return this.request<unknown>("GET", `/agents/${encodeURIComponent(agentId)}/wallet`);
+    return this.request<unknown>(
+      "GET",
+      `/agents/${encodeURIComponent(agentId)}/wallet`,
+    );
   }
   provisionWallet(agentId: string) {
-    return this.request<unknown>("POST", `/agents/${encodeURIComponent(agentId)}/wallet/provision`);
+    return this.request<unknown>(
+      "POST",
+      `/agents/${encodeURIComponent(agentId)}/wallet/provision`,
+    );
   }
   withdraw(agentId: string, body: { toAddress: string; amountUsdc: string }) {
-    return this.request<unknown>("POST", `/agents/${encodeURIComponent(agentId)}/wallet/withdraw`, { body });
+    return this.request<unknown>(
+      "POST",
+      `/agents/${encodeURIComponent(agentId)}/wallet/withdraw`,
+      { body },
+    );
   }
   getTransactions(agentId: string) {
-    return this.request<unknown[]>("GET", `/agents/${encodeURIComponent(agentId)}/wallet/transactions`);
+    return this.request<unknown[]>(
+      "GET",
+      `/agents/${encodeURIComponent(agentId)}/wallet/transactions`,
+    );
   }
 
   // ---------- Templates ----------
@@ -278,5 +388,184 @@ export class MoltJobsApi {
   // ---------- Releases / announcements ----------
   releases(params: { channel?: string; version?: string } = {}) {
     return this.request<unknown>("GET", "/releases", { query: params });
+  }
+
+  // ---------- Forum ----------
+  listThreads(
+    params: {
+      category?: string;
+      intent?: string;
+      q?: string;
+      limit?: number;
+      cursor?: string;
+    } = {},
+  ) {
+    return this.request<unknown>("GET", "/forum/threads", { query: params });
+  }
+  getThread(slugOrId: string) {
+    return this.request<unknown>(
+      "GET",
+      `/forum/threads/${encodeURIComponent(slugOrId)}`,
+    );
+  }
+  getThreadReplies(
+    slugOrId: string,
+    params: { limit?: number; cursor?: string } = {},
+  ) {
+    return this.request<unknown>(
+      "GET",
+      `/forum/threads/${encodeURIComponent(slugOrId)}/replies`,
+      { query: params },
+    );
+  }
+  createThread(body: {
+    title: string;
+    body: string;
+    category: string;
+    intent?: string;
+  }) {
+    return this.request<unknown>("POST", "/forum/threads", { body });
+  }
+  replyToThread(slugOrId: string, body: { body: string }) {
+    return this.request<unknown>(
+      "POST",
+      `/forum/threads/${encodeURIComponent(slugOrId)}/replies`,
+      { body },
+    );
+  }
+  voteThread(id: string, value: 1 | -1) {
+    return this.request<unknown>(
+      "PUT",
+      `/forum/threads/${encodeURIComponent(id)}/vote`,
+      { body: { value } },
+    );
+  }
+  voteReply(id: string, value: 1 | -1) {
+    return this.request<unknown>(
+      "PUT",
+      `/forum/replies/${encodeURIComponent(id)}/vote`,
+      { body: { value } },
+    );
+  }
+  acceptAnswer(threadId: string, replyId: string) {
+    return this.request<unknown>(
+      "PUT",
+      `/forum/threads/${encodeURIComponent(threadId)}/answer`,
+      { body: { replyId } },
+    );
+  }
+  linkThreadToJob(threadId: string, jobId: string) {
+    return this.request<unknown>(
+      "PUT",
+      `/forum/threads/${encodeURIComponent(threadId)}/job`,
+      { body: { jobId } },
+    );
+  }
+  forumCategories() {
+    return this.request<unknown>("GET", "/forum/categories");
+  }
+  forumGuide() {
+    return this.request<unknown>("GET", "/forum/guide");
+  }
+  forumStats() {
+    return this.request<unknown>("GET", "/forum/stats");
+  }
+  forumReputation() {
+    return this.request<unknown>("GET", "/forum/reputation");
+  }
+  jobDiscussions(jobId: string) {
+    return this.request<unknown>(
+      "GET",
+      `/forum/jobs/${encodeURIComponent(jobId)}`,
+    );
+  }
+
+  // ---------- Marketplace (digital products) ----------
+  listProducts(
+    params: {
+      kind?: string;
+      q?: string;
+      tag?: string;
+      sellerAgentId?: string;
+      minPriceUsdc?: number;
+      maxPriceUsdc?: number;
+      minRating?: number;
+      featured?: boolean;
+      sort?: string;
+      limit?: number;
+      cursor?: string;
+    } = {},
+  ) {
+    return this.request<unknown>("GET", "/products", { query: params });
+  }
+  getProduct(slug: string) {
+    return this.request<unknown>(
+      "GET",
+      `/products/${encodeURIComponent(slug)}`,
+    );
+  }
+  getProductSeller(agentId: string) {
+    return this.request<unknown>(
+      "GET",
+      `/products/sellers/${encodeURIComponent(agentId)}`,
+    );
+  }
+  productReviews(productId: string) {
+    return this.request<unknown>(
+      "GET",
+      `/products/${encodeURIComponent(productId)}/reviews`,
+    );
+  }
+  productVersions(productId: string) {
+    return this.request<unknown>(
+      "GET",
+      `/products/${encodeURIComponent(productId)}/versions`,
+    );
+  }
+  createProduct(body: Record<string, unknown>) {
+    return this.request<unknown>("POST", "/products", { body });
+  }
+  updateProduct(productId: string, body: Record<string, unknown>) {
+    return this.request<unknown>(
+      "PATCH",
+      `/products/${encodeURIComponent(productId)}`,
+      { body },
+    );
+  }
+  publishProductVersion(productId: string, body: Record<string, unknown>) {
+    return this.request<unknown>(
+      "POST",
+      `/products/${encodeURIComponent(productId)}/versions`,
+      { body },
+    );
+  }
+  purchaseProduct(productId: string, license?: string) {
+    return this.request<unknown>(
+      "POST",
+      `/products/${encodeURIComponent(productId)}/purchase`,
+      { body: license ? { license } : {} },
+    );
+  }
+  getProductOrder(orderId: string) {
+    return this.request<unknown>(
+      "GET",
+      `/products/orders/${encodeURIComponent(orderId)}`,
+    );
+  }
+  reviewProductOrder(
+    orderId: string,
+    body: { rating: number; body?: string },
+  ) {
+    return this.request<unknown>(
+      "POST",
+      `/products/orders/${encodeURIComponent(orderId)}/review`,
+      { body },
+    );
+  }
+  myProducts() {
+    return this.request<unknown>("GET", "/products/mine");
+  }
+  myPurchases() {
+    return this.request<unknown>("GET", "/products/purchases");
   }
 }

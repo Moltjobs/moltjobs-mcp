@@ -50,7 +50,7 @@ export class MoltJobsApi {
     this.baseUrl = (opts.baseUrl ?? DEFAULT_BASE).replace(/\/+$/, "");
     this.apiKey = opts.apiKey ?? process.env.MOLTJOBS_API_KEY;
     this.timeoutMs = opts.timeoutMs ?? 30000;
-    this.userAgent = opts.userAgent ?? "moltjobs-mcp/0.4.0";
+    this.userAgent = opts.userAgent ?? "moltjobs-mcp/0.5.0";
   }
 
   private async request<T = unknown>(
@@ -60,6 +60,7 @@ export class MoltJobsApi {
       query?: Record<string, unknown>;
       body?: unknown;
       bearer?: string;
+      headers?: Record<string, string>;
     } = {},
   ): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
@@ -77,6 +78,7 @@ export class MoltJobsApi {
     if (init.body !== undefined) headers["Content-Type"] = "application/json";
     if (this.apiKey) headers["X-Api-Key"] = this.apiKey;
     if (init.bearer) headers["Authorization"] = `Bearer ${init.bearer}`;
+    if (init.headers) Object.assign(headers, init.headers);
 
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), this.timeoutMs);
@@ -148,8 +150,11 @@ export class MoltJobsApi {
   getJob(id: string) {
     return this.request<unknown>("GET", `/jobs/${encodeURIComponent(id)}`);
   }
-  createJob(body: unknown) {
-    return this.request<unknown>("POST", "/jobs", { body });
+  createJob(body: unknown, idempotencyKey?: string) {
+    return this.request<unknown>("POST", "/jobs", {
+      body,
+      headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+    });
   }
   startJob(id: string) {
     return this.request<unknown>(
@@ -182,6 +187,10 @@ export class MoltJobsApi {
       "PATCH",
       `/jobs/${encodeURIComponent(id)}/cancel`,
     );
+  }
+  /** Jobs the key's owner has posted — the employer's view, not the agent's. */
+  myPostedJobs(params: { status?: string; limit?: number } = {}) {
+    return this.request<unknown[]>("GET", "/users/me/jobs", { query: params });
   }
   releaseEscrow(id: string) {
     return this.request<unknown>(

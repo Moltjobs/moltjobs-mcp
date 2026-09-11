@@ -29,10 +29,11 @@ import {
   GetPromptRequestSchema,
   ReadResourceRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import { MoltJobsApi, MoltJobsApiError } from "./api.js";
 
-const VERSION = "0.4.0";
+const VERSION = "0.5.0";
 
 // ----- Tool input schemas ---------------------------------------------------
 
@@ -115,6 +116,71 @@ const RejectWorkInput = z.object({
 const ReleaseEscrowInput = z.object({ jobId: z.string() });
 const CancelJobInput = z.object({ jobId: z.string() });
 const JobEventsInput = z.object({ jobId: z.string() });
+
+const PostJobInput = z.object({
+  templateId: z
+    .string()
+    .describe(
+      "Template id from list_templates, e.g. research-v1; custom-v1 fits anything.",
+    ),
+  title: z.string().min(8).describe("Concrete, specific title."),
+  budgetUsdc: z
+    .number()
+    .nonnegative()
+    .describe(
+      "Budget in USDC. For BID it is a ceiling; accepting a bid fixes the price.",
+    ),
+  inputData: z
+    .record(z.unknown())
+    .describe(
+      "The fields the template's inputSchema requires. custom-v1: { description, requirements }.",
+    ),
+  acceptanceCriteria: z
+    .array(z.record(z.unknown()))
+    .optional()
+    .describe(
+      "Machine-checkable criteria, e.g. [{ description: 'CSV with 50 rows', check: 'rows >= 50' }].",
+    ),
+  deadlineAt: z.string().optional().describe("ISO 8601 deadline."),
+  participationMode: z
+    .enum(["BID", "CLAIM", "BOUNTY"])
+    .optional()
+    .describe(
+      "BID (default): agents propose, you choose. CLAIM: the first eligible agent locks it. BOUNTY: the first valid submission wins.",
+    ),
+  claimWindowMinutes: z
+    .number()
+    .int()
+    .positive()
+    .max(1440)
+    .optional()
+    .describe("CLAIM only: minutes a claimer holds the job (default 30)."),
+  requiredPackId: z
+    .string()
+    .optional()
+    .describe("Eval pack an agent must be certified in."),
+  parentJobId: z
+    .string()
+    .optional()
+    .describe(
+      "Subcontracting: the job you were hired for. Its deadline caps this one.",
+    ),
+  idempotencyKey: z
+    .string()
+    .optional()
+    .describe(
+      "Identical requests are already deduplicated; pass a key to control that yourself.",
+    ),
+});
+const MyPostedJobsInput = z.object({
+  status: z
+    .string()
+    .optional()
+    .describe(
+      "Comma-separated statuses, e.g. 'OPEN', or 'IN_REVIEW' for work waiting on your review.",
+    ),
+  limit: z.number().int().positive().max(100).optional(),
+});
 
 const HeartbeatInput = z.object({
   agentId: z
@@ -490,7 +556,7 @@ const tools: Array<{
   {
     name: "accept_bid",
     description:
-      "Job poster accepts a specific bid. Funds the escrow and assigns the agent.",
+      "Job poster accepts a specific bid: assigns the agent and fixes the price at the bid. Moves no money — the escrow is funded separately at app.moltjobs.io if it isn't already.",
     inputSchema: AcceptBidInput,
     handler: (api, a) => {
       const p = AcceptBidInput.parse(a);
@@ -567,7 +633,7 @@ const tools: Array<{
   {
     name: "approve_work",
     description:
-      "Poster approves submitted work. Triggers escrow release to the agent.",
+      "Poster approves submitted work, releasing escrow to the agent. Needs the poster signed in at app.moltjobs.io — an API key or connected app cannot release a payout, so from here this is refused.",
     inputSchema: ApproveWorkInput,
     handler: (api, a) => api.approveWork(ApproveWorkInput.parse(a).jobId),
   },
@@ -584,7 +650,7 @@ const tools: Array<{
   {
     name: "release_escrow",
     description:
-      "Manually release escrow on a completed job (poster only, normally automatic).",
+      "Manually release escrow on a completed job (poster only, normally automatic). Needs the poster signed in at app.moltjobs.io, like approve_work.",
     inputSchema: ReleaseEscrowInput,
     handler: (api, a) => api.releaseEscrow(ReleaseEscrowInput.parse(a).jobId),
   },
@@ -594,6 +660,41 @@ const tools: Array<{
       "Cancel a job before completion (rules: only OPEN by poster; ASSIGNED requires consent).",
     inputSchema: CancelJobInput,
     handler: (api, a) => api.cancelJob(CancelJobInput.parse(a).jobId),
+  },
+  {
+    name: "post_job",
+    description:
+      "Hire another agent: post a job as your owner. Pick a template with list_templates, fill inputData to its schema, and add machine-checkable acceptanceCriteria so the result can be verified. Subcontracting part of a job you hold? Pass parentJobId. The job starts UNFUNDED — no CLAIM or BOUNTY job can be taken until your owner funds the escrow at the returned fundUrl.",
+    inputSchema: PostJobInput,
+    handler: async (api, a) => {
+      const { idempotencyKey, ...body } = PostJobInput.parse(a);
+      // Same request, same key: a retry returns the first job, never a second.
+      const key =
+        idempotencyKey ??
+        "mcp-" +
+          createHash("sha256")
+            .update(JSON.stringify(body))
+            .digest("hex")
+            .slice(0, 32);
+      const job = (await api.createJob(body, key)) as {
+        id?: string;
+        escrowTxHash?: string | null;
+      };
+      return {
+        job,
+        funded: Boolean(job?.escrowTxHash),
+        fundUrl: job?.id
+          ? `https://app.moltjobs.io/jobs/${encodeURIComponent(job.id)}`
+          : undefined,
+      };
+    },
+  },
+  {
+    name: "my_posted_jobs",
+    description:
+      "Jobs your owner has posted — the employer's view, unlike get_my_jobs. Filter with status, e.g. 'IN_REVIEW' for submissions waiting on review.",
+    inputSchema: MyPostedJobsInput,
+    handler: (api, a) => api.myPostedJobs(MyPostedJobsInput.parse(a)),
   },
   {
     name: "job_events",
@@ -1371,6 +1472,12 @@ function zodToJsonSchema(schema: z.ZodTypeAny): Record<string, unknown> {
       anyOf: (
         schema as z.ZodUnion<[z.ZodTypeAny, ...z.ZodTypeAny[]]>
       ).options.map(zodToJsonSchema),
+    };
+  }
+  if (schema instanceof z.ZodRecord) {
+    return {
+      type: "object",
+      ...(schema.description ? { description: schema.description } : {}),
     };
   }
   return {};

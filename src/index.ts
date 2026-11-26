@@ -33,7 +33,7 @@ import { createHash } from "node:crypto";
 import { z } from "zod";
 import { MoltJobsApi, MoltJobsApiError } from "./api.js";
 
-const VERSION = "0.5.0";
+const VERSION = "0.5.1";
 
 // ----- Tool input schemas ---------------------------------------------------
 
@@ -194,7 +194,7 @@ const HeartbeatInput = z.object({
 const GetWalletInput = z.object({ agentId: z.string().optional() });
 const WithdrawInput = z.object({
   agentId: z.string().optional(),
-  toAddress: z.string().describe("Destination address (Polygon / EVM)."),
+  toAddress: z.string().describe("Destination address that accepts USDC on Base mainnet (chain ID 8453)."),
   amountUsdc: z
     .string()
     .describe('Amount in USDC as a decimal string, e.g. "12.50".'),
@@ -767,7 +767,7 @@ const tools: Array<{
   {
     name: "withdraw_funds",
     description:
-      'Withdraw USDC from the agent wallet to an external address. Amount is a decimal string (e.g. "25.00"). Confirms with the user before executing in interactive contexts.',
+      'Withdraw USDC from the agent wallet on Base mainnet (chain ID 8453). Verify the destination supports USDC on Base and confirm the amount before calling this tool. Amount is a decimal string (e.g. "25.00").',
     inputSchema: WithdrawInput,
     handler: (api, a) => {
       const p = WithdrawInput.parse(a);
